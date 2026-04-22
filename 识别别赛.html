@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>儿歌识树游戏 - 纯树木版</title>
+    <style>
+        :root {
+            --bg-color: #f0f9eb;
+            --main-green: #388e3c;
+            --accent: #ff7043;
+        }
+
+        body {
+            margin: 0; background-color: var(--bg-color);
+            font-family: "Microsoft YaHei", sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-board {
+            width: 950px; height: 650px; background: white;
+            border: 12px solid #c8e6c9; border-radius: 50px;
+            display: flex; flex-direction: column; position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* 顶部得分 */
+        #score-panel {
+            display: flex; justify-content: space-between; padding: 25px 50px;
+            font-size: 28px; font-weight: bold; color: var(--main-green);
+        }
+        .score-box { padding: 10px 25px; border-radius: 40px; color: white; }
+        .team-a { background: #66bb6a; }
+        .team-b { background: #ffa726; }
+
+        /* 题目区 */
+        #question-area {
+            text-align: center; padding: 10px;
+        }
+        #rhyme-hint {
+            font-size: 36px; color: #2e7d32; background: #e8f5e9;
+            display: inline-block; padding: 15px 40px; border-radius: 100px;
+            border: 3px dashed #81c784;
+        }
+
+        /* 选项区 */
+        #options-grid {
+            flex: 1; display: flex; justify-content: center; align-items: center;
+            gap: 30px; padding: 20px;
+        }
+        .tree-card {
+            width: 240px; height: 320px; background: #fafafa;
+            border: 6px solid #eeeeee; border-radius: 30px;
+            cursor: pointer; overflow: hidden; transition: all 0.3s;
+            display: flex; flex-direction: column;
+        }
+        .tree-card:hover { transform: translateY(-10px); border-color: var(--accent); }
+        .tree-card img {
+            width: 100%; height: 100%; object-fit: cover; /* 保证图片充满格子 */
+        }
+
+        /* 成功弹窗 */
+        #win-modal {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; text-align: center;
+        }
+        #win-modal h2 { font-size: 60px; color: #f44336; margin-bottom: 10px; }
+        #win-modal p { font-size: 32px; color: #388e3c; margin-bottom: 30px; font-weight: bold;}
+
+        button {
+            padding: 20px 60px; font-size: 28px; border-radius: 60px;
+            background: var(--accent); color: white; border: none; cursor: pointer;
+            box-shadow: 0 8px 0 #bf360c;
+        }
+        button:active { transform: translateY(4px); box-shadow: 0 4px 0 #bf360c; }
+
+        #turn-indicator { font-size: 24px; color: #666; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="game-board">
+    <div id="score-panel">
+        <div class="score-box team-a">A组: <span id="sA">0</span></div>
+        <div id="turn-info">请 A 组观察</div>
+        <div class="score-box team-b">B组: <span id="sB">0</span></div>
+    </div>
+
+    <div id="question-area">
+        <div id="rhyme-hint">正在加载...</div>
+        <div id="turn-indicator">听儿歌，找大树</div>
+    </div>
+
+    <div id="options-grid">
+        <!-- 树木图片会在这里生成 -->
+    </div>
+
+    <div id="win-modal">
+        <h2>🎉 太棒了！</h2>
+        <p id="full-rhyme"></p>
+        <button onclick="nextLevel()">下一棵树</button>
+    </div>
+</div>
+
+<script>
+    const treeList = [
+        { name: "杨树", rhyme: "杨树直挺几丈高", file: "yang.jpg" },
+        { name: "柳树", rhyme: "柳树倒挂细枝条", file: "liu.jpg" },
+        { name: "银杏", rhyme: "银杏叶子像扇子", file: "yinxing.jpg" },
+        { name: "桃树", rhyme: "桃树杏树开花早", file: "tao.jpg" },
+        { name: "杏树", rhyme: "桃树杏树开花早", file: "xing.jpg" },
+        { name: "松树", rhyme: "松树柏树常年绿", file: "song.jpg" },
+        { name: "柏树", rhyme: "松树柏树常年绿", file: "bai.jpg" },
+        { name: "枫树", rhyme: "枫叶秋来红叶飘", file: "feng.jpg" }
+    ];
+
+    let currentIdx = 0;
+    let scoreA = 0;
+    let scoreB = 0;
+    let turn = 'A';
+
+    function initLevel() {
+        if (currentIdx >= treeList.length) {
+            document.getElementById('rhyme-hint').innerText = "游戏完成！小朋友们真棒！";
+            document.getElementById('options-grid').innerHTML = "";
+            return;
+        }
+
+        const currentTree = treeList[currentIdx];
+        document.getElementById('rhyme-hint').innerText = currentTree.rhyme;
+        document.getElementById('win-modal').style.display = 'none';
+        document.getElementById('turn-info').innerText = `轮到 ${turn} 组`;
+
+        // 抽取3个选项
+        let options = [currentTree];
+        while(options.length < 3) {
+            let rand = treeList[Math.floor(Math.random() * treeList.length)];
+            if(!options.find(t => t.name === rand.name)) options.push(rand);
+        }
+        options.sort(() => Math.random() - 0.5);
+
+        const grid = document.getElementById('options-grid');
+        grid.innerHTML = '';
+        options.forEach(tree => {
+            const card = document.createElement('div');
+            card.className = 'tree-card';
+            card.innerHTML = `<img src="${tree.file}" alt="${tree.name}" onerror="this.parentElement.innerHTML='<div style=\'padding:20px\'>暂无图片<br>${tree.file}</div>'">`;
+            card.onclick = () => {
+                if(tree.name === currentTree.name) {
+                    showWin(currentTree.rhyme);
+                } else {
+                    alert("再仔细找找，哪棵树符合儿歌说的？");
+                }
+            };
+            grid.appendChild(card);
+        });
+    }
+
+    function showWin(rhymeText) {
+        document.getElementById('win-modal').style.display = 'flex';
+        document.getElementById('full-rhyme').innerText = `答对了！${rhymeText}`;
+        document.getElementById('turn-indicator').innerText = '🎉 回答正确！';
+
+        if(turn === 'A') { scoreA += 10; document.getElementById('sA').innerText = scoreA; }
+        else { scoreB += 10; document.getElementById('sB').innerText = scoreB; }
+    }
+
+    function nextLevel() {
+        currentIdx++;
+        turn = (turn === 'A' ? 'B' : 'A');
+        initLevel();
+    }
+
+    // 乱序题目
+    treeList.sort(() => Math.random() - 0.5);
+    window.onload = initLevel;
+</script>
+
+</body>
+</html>
