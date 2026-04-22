@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>连连看</title>
+    <title>连连看 - 树木与叶子</title>
     <style>
         :root {
-            --bg-color: #e8f5e9;
+            --bg-color: #f0f9eb;
             --border-color: #8bc34a;
             --text-color: #2e7d32;
             --error-color: #f44336;
+            --success-color: #4caf50;
+            --active-color: #2196f3;
         }
 
         body {
@@ -25,42 +27,60 @@
         h1 {
             text-align: center;
             color: var(--text-color);
-            font-size: 24px;
+            font-size: 22px;
             margin: 10px 0;
+            text-shadow: 1px 1px 2px white;
         }
 
         .game-container {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: 90vh;
+            height: 85vh;
+            max-width: 1000px;
+            margin: 0 auto;
             position: relative;
-            padding: 20px 0;
+            padding: 20px 10px;
         }
 
+        /* 使用Grid确保上下严格对齐 */
         .row {
-            display: flex;
-            justify-content: space-around;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
             z-index: 2;
         }
 
         .item {
             background: white;
             border: 2px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 5px;
-            width: 10.5%;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
             position: relative;
-            transition: transform 0.2s;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         /* 选中态 */
-        .item.active { transform: scale(1.05); border-color: #2196F3; }
+        .item.active { 
+            transform: scale(1.05); 
+            border-color: var(--active-color);
+            box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+        }
+
+        /* 已完成态 */
+        .item.matched {
+            border-color: var(--success-color);
+            background-color: #f1f8e9;
+        }
 
         .item img {
-            width: 100%;
+            width: 90%;
             aspect-ratio: 1/1;
             object-fit: cover;
             border-radius: 6px;
@@ -68,28 +88,32 @@
         }
 
         .item p {
-            margin: 5px 0;
-            font-size: 12px;
+            margin: 4px 0 0 0;
+            font-size: 11px;
             color: var(--text-color);
             font-weight: bold;
             line-height: 1.2;
             pointer-events: none;
+            height: 2.4em;
+            display: flex;
+            align-items: center;
         }
 
-        /* 连线连接点 */
+        /* 连接点对齐优化 */
         .dot {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             background: var(--border-color);
             border-radius: 50%;
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 3;
         }
-        .top-row .dot { bottom: -7px; }
-        .bottom-row .dot { top: -7px; }
+        .top-row .dot { bottom: -6px; }
+        .bottom-row .dot { top: -6px; }
+        .matched .dot { background: var(--success-color); }
 
-        /* 画布层 */
         #lineCanvas {
             position: absolute;
             top: 0;
@@ -100,70 +124,45 @@
             pointer-events: none;
         }
 
-        /* 错误反馈”X” */
-        .error-mark {
+        /* 反馈动画 */
+        .feedback-mark {
             position: fixed;
-            color: var(--error-color);
             font-size: 80px;
             font-weight: bold;
             pointer-events: none;
             z-index: 100;
             display: none;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.2);
         }
 
-        @keyframes fadeOut {
-            0% { opacity: 1; transform: scale(0.5) rotate(0deg); }
-            30% { opacity: 1; transform: scale(1.3) rotate(-10deg); }
-            60% { opacity: 1; transform: scale(1.1) rotate(10deg); }
-            100% { opacity: 0; transform: scale(0.8) rotate(0deg); }
-        }
-
-        /* 正确反馈”✓” */
-        .success-mark {
-            position: fixed;
-            color: #4CAF50;
-            font-size: 60px;
-            font-weight: bold;
-            pointer-events: none;
-            z-index: 100;
-            display: none;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-        }
-
-        @keyframes successPop {
-            0% { opacity: 0; transform: scale(0.3); }
+        @keyframes popOut {
+            0% { opacity: 0; transform: scale(0.5); }
             50% { opacity: 1; transform: scale(1.2); }
             100% { opacity: 0; transform: scale(1); }
         }
 
-        /* 完成提示 */
         .complete-msg {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #4CAF50, #8BC34A);
-            color: white;
-            padding: 30px 50px;
-            border-radius: 20px;
-            font-size: 28px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 5px solid var(--success-color);
+            color: var(--success-color);
+            padding: 30px 60px;
+            border-radius: 25px;
+            font-size: 32px;
             font-weight: bold;
             z-index: 200;
             display: none;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            animation: completeShow 0.5s ease-out;
-        }
-
-        @keyframes completeShow {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>新游戏：连连看，请你来连线</h1>
+    <h1>🌿 连连看：观察叶子找树木</h1>
 
     <div class="game-container" id="gameArea">
         <div class="row top-row" id="topRow"></div>
@@ -171,15 +170,15 @@
         <canvas id="lineCanvas"></canvas>
     </div>
 
-    <div id="errorMark" class="error-mark">✕</div>
-    <div id="successMark" class="success-mark">✓</div>
-    <div id="completeMsg" class="complete-msg">🎉 太棒了！全部连对啦！</div>
+    <div id="errorMark" class="feedback-mark" style="color: var(--error-color);">✕</div>
+    <div id="successMark" class="feedback-mark" style="color: var(--success-color);">✓</div>
+    <div id="completeMsg" class="complete-msg">🎉 太棒了！<br>全部连对啦！</div>
 
 <script>
     // 1. 数据配置
     const treeData = [
         { id: 'yinxing', name: '银杏树', img: 'yinxing.jpg' },
-        { id: 'feng', name: '枫树', img: 'feng.jpg' }, // 需自行补充文件名
+        { id: 'feng', name: '枫树', img: 'feng.jpg' },
         { id: 'yang', name: '杨树', img: 'yang.jpg' },
         { id: 'liu', name: '柳树', img: 'liu.jpg' },
         { id: 'xing', name: '杏树', img: 'xing.jpg' },
@@ -189,83 +188,104 @@
     ];
 
     const leafData = [
-        { id: 'liu', desc: '特征：细长条形叶', img: 'liu_leaf.jpg' },
-        { id: 'yang', desc: '特征：胡萝卜形状叶', img: 'yang_leaf.jpg' },
-        { id: 'yinxing', desc: '特征：小扇子形状', img: 'yinxing_leaf.jpg' },
-        { id: 'song', desc: '特征：细长条形叶', img: 'song_leaf.png' },
-        { id: 'feng', desc: '特征：手掌形状', img: 'feng_leaf.jpg' },
-        { id: 'xing', desc: '特征：圆形叶', img: 'xing_leaf.jpg' },
-        { id: 'bai', desc: '特征：羽状排列', img: 'bai_leaf.jpg' },
-        { id: 'tao', desc: '特征：扁圆形叶', img: 'tao_leaf.jpg' }
+        { id: 'liu', desc: '细长条形叶', img: 'liu_leaf.jpg' },
+        { id: 'yang', desc: '胡萝卜形状叶', img: 'yang_leaf.jpg' },
+        { id: 'yinxing', desc: '小扇子形状', img: 'yinxing_leaf.jpg' },
+        { id: 'song', desc: '针状叶', img: 'song_leaf.png' },
+        { id: 'feng', desc: '手掌形状', img: 'feng_leaf.jpg' },
+        { id: 'xing', desc: '圆形叶', img: 'xing_leaf.jpg' },
+        { id: 'bai', desc: '羽状排列叶', img: 'bai_leaf.jpg' },
+        { id: 'tao', desc: '扁圆形叶', img: 'tao_leaf.jpg' }
     ];
+
+    // 2. 音效引擎 (使用 Web Audio API，无需外部文件)
+    const AudioEngine = {
+        ctx: new (window.AudioContext || window.webkitAudioContext)(),
+        
+        playTone(freq, type, duration) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + duration);
+        },
+
+        success() { this.playTone(880, 'sine', 0.3); },
+        error() { this.playTone(220, 'square', 0.3); },
+        complete() {
+            // 语音合成
+            const msg = new SpeechSynthesisUtterance("恭喜你，全部连对啦！");
+            msg.lang = 'zh-CN';
+            msg.rate = 1;
+            window.speechSynthesis.speak(msg);
+        }
+    };
 
     const canvas = document.getElementById('lineCanvas');
     const ctx = canvas.getContext('2d');
-    const errorMark = document.getElementById('errorMark');
-    const successMark = document.getElementById('successMark');
-    const completeMsg = document.getElementById('completeMsg');
-
     let startItem = null;
     let isDragging = false;
     let currentX = 0;
     let currentY = 0;
-    let connections = []; // 存储正确的连线 {fromId, toId, startPos, endPos}
+    let connections = []; 
 
-    // 2. 初始化布局
     function init() {
         const topRow = document.getElementById('topRow');
         const bottomRow = document.getElementById('bottomRow');
 
-        treeData.forEach(item => {
-            topRow.innerHTML += createItem(item, 'tree');
-        });
-        leafData.forEach(item => {
-            bottomRow.innerHTML += createItem(item, 'leaf');
-        });
+        // 渲染 (可以对leafData进行洗牌以增加难度)
+        const shuffledLeaf = [...leafData].sort(() => Math.random() - 0.5);
 
-        resize();
+        treeData.forEach(item => topRow.innerHTML += createItem(item, 'tree'));
+        shuffledLeaf.forEach(item => bottomRow.innerHTML += createItem(item, 'leaf'));
+
         window.addEventListener('resize', resize);
+        setTimeout(resize, 100);
     }
 
     function createItem(data, type) {
         return `
-            <div class="item" data-id="${data.id}" data-type="${type}">
-                <img src="${data.img}">
+            <div class="item" data-id="${data.id}" data-type="${type}" id="${type}-${data.id}">
+                <img src="${data.img}" alt="${data.name || ''}" onerror="this.src='https://via.placeholder.com/100?text=图片'">
                 <p>${data.name || data.desc}</p>
                 <div class="dot"></div>
             </div>`;
     }
 
     function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
         draw();
-    }
-
-    // 3. 核心交互逻辑
-    function getEventPos(e) {
-        const t = e.touches ? e.touches[0] : e;
-        return { x: t.clientX, y: t.clientY };
     }
 
     function getDotCenter(el) {
         const dot = el.querySelector('.dot');
         const rect = dot.getBoundingClientRect();
+        const containerRect = document.getElementById('gameArea').getBoundingClientRect();
         return {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2
+            x: rect.left - containerRect.left + rect.width / 2,
+            y: rect.top - containerRect.top + rect.height / 2
         };
     }
 
+    // 交互逻辑
     function onStart(e) {
+        if (AudioEngine.ctx.state === 'suspended') AudioEngine.ctx.resume();
         const item = e.target.closest('.item');
         if (item && item.dataset.type === 'tree') {
+            // 如果已经连过了，不允许再次从这里开始（除非你想支持重连）
+            if (connections.find(c => c.fromId === item.dataset.id)) return;
+            
             startItem = item;
             isDragging = true;
             item.classList.add('active');
             const pos = getEventPos(e);
-            currentX = pos.x;
-            currentY = pos.y;
+            updateCurrentPos(pos);
         }
     }
 
@@ -273,147 +293,115 @@
         if (!isDragging) return;
         e.preventDefault();
         const pos = getEventPos(e);
-        currentX = pos.x;
-        currentY = pos.y;
-
-        // 检测当前鼠标是否悬停在某个树叶上
-        const hoveredLeaf = document.elementFromPoint(currentX, currentY)?.closest('.item.leaf');
+        updateCurrentPos(pos);
+        
+        const hoveredLeaf = document.elementFromPoint(pos.clientX, pos.clientY)?.closest('.item.leaf');
         draw(hoveredLeaf);
     }
 
     function onEnd(e) {
         if (!isDragging) return;
-
-        // 找到结束位置的元素
-        const endItem = document.elementFromPoint(currentX, currentY)?.closest('.item');
+        const endItem = document.elementFromPoint(currentX_global, currentY_global)?.closest('.item');
 
         if (endItem && endItem.dataset.type === 'leaf') {
             if (endItem.dataset.id === startItem.dataset.id) {
-                // 情况1：连对了
-                if (!connections.find(c => c.fromId === startItem.dataset.id)) {
+                // 成功
+                if (!connections.find(c => c.leafId === endItem.dataset.id)) {
                     connections.push({
                         fromId: startItem.dataset.id,
-                        startItem: startItem,
-                        endItem: endItem
+                        leafId: endItem.dataset.id,
+                        startEl: startItem,
+                        endEl: endItem
                     });
-                    // 显示成功标记
-                    showSuccess(currentX, currentY);
-                    // 检查是否全部完成
+                    startItem.classList.add('matched');
+                    endItem.classList.add('matched');
+                    AudioEngine.success();
+                    showFeedback('successMark');
                     checkComplete();
                 }
             } else {
-                // 情况2：连错了
-                showError(currentX, currentY);
+                // 失败
+                AudioEngine.error();
+                showFeedback('errorMark');
             }
         }
 
-        // 重置状态
         startItem.classList.remove('active');
         startItem = null;
         isDragging = false;
         draw();
     }
 
-    // 4. 绘图与反馈
+    let currentX_global, currentY_global;
+    function updateCurrentPos(pos) {
+        const containerRect = document.getElementById('gameArea').getBoundingClientRect();
+        currentX = pos.clientX - containerRect.left;
+        currentY = pos.clientY - containerRect.top;
+        currentX_global = pos.clientX;
+        currentY_global = pos.clientY;
+    }
+
+    function getEventPos(e) {
+        return e.touches ? e.touches[0] : e;
+    }
+
     function draw(hoveredLeaf) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 绘制已保存的正确连线
+        // 画已确定的线
         ctx.setLineDash([]);
         ctx.lineWidth = 4;
         ctx.strokeStyle = '#4CAF50';
         connections.forEach(conn => {
-            const p1 = getDotCenter(conn.startItem);
-            const p2 = getDotCenter(conn.endItem);
-            drawLine(p1.x, p1.y, p2.x, p2.y);
+            const p1 = getDotCenter(conn.startEl);
+            const p2 = getDotCenter(conn.endEl);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
         });
 
-        // 绘制当前正在拖拽的线
+        // 画拖拽中的线
         if (isDragging && startItem) {
             const p1 = getDotCenter(startItem);
-            ctx.setLineDash([8, 5]);
+            ctx.setLineDash([5, 5]);
             ctx.lineWidth = 3;
-
-            // 判断是否悬停在正确或错误的树叶上
+            
             if (hoveredLeaf) {
-                if (hoveredLeaf.dataset.id === startItem.dataset.id) {
-                    // 悬停在正确的树叶上 - 绿色
-                    ctx.strokeStyle = '#4CAF50';
-                } else {
-                    // 悬停在错误的树叶上 - 红色
-                    ctx.strokeStyle = '#f44336';
-                }
+                ctx.strokeStyle = hoveredLeaf.dataset.id === startItem.dataset.id ? '#4CAF50' : '#f44336';
             } else {
-                // 没有悬停任何树叶 - 蓝色
                 ctx.strokeStyle = '#2196F3';
             }
 
-            drawLine(p1.x, p1.y, currentX, currentY);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
         }
     }
 
-    function drawLine(x1, y1, x2, y2) {
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-    }
-
-    function showError(x, y) {
-        // 显示X标记在错误位置
-        errorMark.style.left = (x - 40) + 'px';
-        errorMark.style.top = (y - 50) + 'px';
-        errorMark.style.display = 'block';
-        errorMark.style.animation = 'none';
-        errorMark.offsetHeight; // 触发重绘以重新播放动画
-        errorMark.style.animation = 'fadeOut 0.6s forwards';
-
-        // 震动反馈（如果设备支持）
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-
-        setTimeout(() => {
-            errorMark.style.display = 'none';
-        }, 600);
-    }
-
-    function showSuccess(x, y) {
-        // 显示✓标记
-        successMark.style.left = (x - 35) + 'px';
-        successMark.style.top = (y - 45) + 'px';
-        successMark.style.display = 'block';
-        successMark.style.animation = 'none';
-        successMark.offsetHeight;
-        successMark.style.animation = 'successPop 0.5s forwards';
-
-        // 震动反馈
-        if (navigator.vibrate) navigator.vibrate([50, 30, 100]);
-
-        setTimeout(() => {
-            successMark.style.display = 'none';
-        }, 500);
+    function showFeedback(elementId) {
+        const el = document.getElementById(elementId);
+        el.style.left = (currentX_global - 40) + 'px';
+        el.style.top = (currentY_global - 40) + 'px';
+        el.style.display = 'block';
+        el.style.animation = 'popOut 0.6s forwards';
+        setTimeout(() => el.style.display = 'none', 600);
     }
 
     function checkComplete() {
-        // 检查是否所有树都连对了
         if (connections.length === treeData.length) {
             setTimeout(() => {
-                completeMsg.style.display = 'block';
-                // 庆祝震动
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
-                // 3秒后隐藏
-                setTimeout(() => {
-                    completeMsg.style.display = 'none';
-                }, 3000);
-            }, 300);
+                AudioEngine.complete();
+                document.getElementById('completeMsg').style.display = 'block';
+            }, 500);
         }
     }
 
-    // 绑定事件
     const area = document.getElementById('gameArea');
     area.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
-
     area.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(e); }, {passive: false});
     window.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, {passive: false});
     window.addEventListener('touchend', onEnd);
